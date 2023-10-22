@@ -607,26 +607,50 @@ def convert_to_bool_control_if_possible(control: Control) -> Control:
 
 def extract_ac_control(controls: list[Control]) -> list[Control]:
     controls_dict = {control.key: control for control in controls}
+    _LOGGER.debug("controls_dict: %s", controls_dict)
     keys = controls_dict.keys()
     if "air_conditioner_program" in keys:
         state = controls_dict["state"]
+        _LOGGER.debug("state of type %s: %s", type(state), state)
         assert isinstance(state, WriteBooleanControl)
         program = controls_dict["air_conditioner_program"]
+        _LOGGER.debug("program of type %s: %s", type(program), program)
         assert isinstance(program, WriteEnumControl)
         current_temperature = controls_dict["air_conditioner_room_temperature"]
+        _LOGGER.debug(
+            "current_temperature of type %s: %s",
+            type(current_temperature),
+            current_temperature,
+        )
         assert isinstance(current_temperature, NumericControl)
         target_temperature = controls_dict["air_conditioner_target_temperature"]
+        _LOGGER.debug(
+            "target_temperature of type %s: %s",
+            type(target_temperature),
+            target_temperature,
+        )
         assert isinstance(target_temperature, WriteNumericControl)
         fan_mode = controls_dict["air_conditioner_wind_strength"]
+        _LOGGER.debug("fan_mode of type %s: %s", type(fan_mode), fan_mode)
         assert isinstance(fan_mode, WriteEnumControl)
         vertical_swing_control = controls_dict.get(
             "air_conditioner_up_down_vane_control"
+        )
+        _LOGGER.debug(
+            "vertical_swing_control of type %s: %s",
+            type(vertical_swing_control),
+            vertical_swing_control,
         )
         assert vertical_swing_control is None or isinstance(
             vertical_swing_control, WriteEnumControl
         )
         horizontal_swing_control = controls_dict.get(
             "air_conditioner_left_right_vane_control"
+        )
+        _LOGGER.debug(
+            "horizontal_swing_control of type %s: %s",
+            type(horizontal_swing_control),
+            horizontal_swing_control,
         )
         assert horizontal_swing_control is None or isinstance(
             horizontal_swing_control, WriteEnumControl
@@ -666,6 +690,7 @@ def generate_controls_from_config(
         *build_controls_from_warnings(config.warnings),
         *build_controls_from_features(config.settings),
     ]
+    _LOGGER.debug("possible_controls: %s", possible_controls)
 
     controls = [
         convert_to_bool_control_if_possible(control)
