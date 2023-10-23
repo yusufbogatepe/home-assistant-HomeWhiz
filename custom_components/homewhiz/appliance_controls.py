@@ -220,15 +220,21 @@ class DisabledSwingAxisControl(Control):
 class SwingAxisControl(Control):
     enabled = True
 
-    def __init__(self, parent: WriteEnumControl):
+    def __init__(self, parent: WriteEnumControl | WriteBooleanControl):
         self.key = parent.key
         self.parent = parent
 
     def get_value(self, data: bytearray) -> bool:
+        _LOGGER.debug("Getting value for SwingAxisControl for data %s", data)
         option = self.parent.get_value(data)
-        return option is not None and not option.endswith("_off")
+        _LOGGER.debug("SwingAxisControl option %s", option)
+        if isinstance(option, str):
+            return option is not None and not option.endswith("_off")
+        return option is not None
 
     def _option_with_suffix(self, suffix: str) -> str | None:
+        if isinstance(self.parent, WriteBooleanControl):
+            return None
         return next(
             (
                 option
@@ -239,22 +245,29 @@ class SwingAxisControl(Control):
         )
 
     def set_value(self, value: bool, current_data: bytearray) -> list[Command]:
+        _LOGGER.debug("Setting value for SwingAxisControl: %s", value)
         current_value = self.get_value(current_data)
         if current_value == value:
             return []
-        selected_option = (
-            self._option_with_suffix("_auto")
-            if value
-            else self._option_with_suffix("_off")
-        )
-        if selected_option is None:
-            raise Exception(f"Cannot change swing for axis {self.key}")
-        return [self.parent.set_value(selected_option)]
+        if isinstance(self.parent, WriteEnumControl):
+            selected_option = (
+                self._option_with_suffix("_auto")
+                if value
+                else self._option_with_suffix("_off")
+            )
+            _LOGGER.debug(
+                "Selected option in SwingAxisControl set_value: %s", selected_option
+            )
+            if selected_option is None:
+                raise Exception(f"Cannot change swing for axis {self.key}")
+            return [self.parent.set_value(selected_option)]
+        return [self.parent.set_value(value)]
 
 
 def build_swing_control_from_optional(
-    parent: WriteEnumControl | None,
+    parent: WriteEnumControl | WriteBooleanControl | None,
 ) -> DisabledSwingAxisControl | SwingAxisControl:
+    _LOGGER.debug(("Building swing control for parent %s", parent))
     if parent is None:
         return DisabledSwingAxisControl()
     return SwingAxisControl(parent)
@@ -266,8 +279,9 @@ class SwingControl(Control):
     def __init__(
         self,
         horizontal: WriteEnumControl | None,
-        vertical: WriteEnumControl | None,
+        vertical: WriteEnumControl | WriteBooleanControl | None,
     ):
+        _LOGGER.debug("Setting up SwingControl for %s, %s", horizontal, vertical)
         self.horizontal = build_swing_control_from_optional(horizontal)
         self.vertical = build_swing_control_from_optional(vertical)
         self.enabled = self.horizontal.enabled or self.vertical.enabled
@@ -641,8 +655,10 @@ def extract_ac_control(controls: list[Control]) -> list[Control]:
             type(vertical_swing_control),
             vertical_swing_control,
         )
-        assert vertical_swing_control is None or isinstance(
-            vertical_swing_control, WriteEnumControl
+        assert (
+            vertical_swing_control is None
+            or isinstance(vertical_swing_control, WriteEnumControl)
+            or isinstance(vertical_swing_control, WriteBooleanControl)
         )
         horizontal_swing_control = controls_dict.get(
             "air_conditioner_left_right_vane_control"
