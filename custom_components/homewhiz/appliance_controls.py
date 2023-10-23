@@ -267,7 +267,7 @@ class SwingAxisControl(Control):
 def build_swing_control_from_optional(
     parent: WriteEnumControl | WriteBooleanControl | None,
 ) -> DisabledSwingAxisControl | SwingAxisControl:
-    _LOGGER.debug(("Building swing control for parent %s", parent))
+    _LOGGER.debug("Building swing control for parent %s", parent)
     if parent is None:
         return DisabledSwingAxisControl()
     return SwingAxisControl(parent)
