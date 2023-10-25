@@ -45,7 +45,7 @@ def to_friendly_name(name: str) -> str:
     name = name.lower()
     # https://stackoverflow.com/questions/15754587/keeping-only-certain-characters-in-a-string-using-python
     name = re.sub("[^a-z0-9-_]", "", name)
-    # "cannot start or end with a hyphen or underscore
+    # "cannot start or end with a hyphen or underscore"
     if name[-1] == "_":
         name = name[:-1]
     return name
