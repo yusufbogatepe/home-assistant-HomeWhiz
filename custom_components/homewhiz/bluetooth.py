@@ -1,10 +1,13 @@
 import asyncio
 import logging
+from collections.abc import Callable
+from datetime import timedelta
 
 from bleak import BleakClient, BLEDevice
 from bleak_retry_connector import establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_interval
 
 from .const import DOMAIN
 from .homewhiz import Command, HomewhizCoordinator
@@ -24,6 +27,7 @@ class HomewhizBluetoothUpdateCoordinator(HomewhizCoordinator):
         self._device: BLEDevice | None = None
         self._connection: BleakClient | None = None
         self.alive = True
+        self._refresh_connection_task: Callable | None = None
         super().__init__(hass, _LOGGER, name=DOMAIN)
 
     async def connect(self) -> bool:
@@ -58,6 +62,16 @@ class HomewhizBluetoothUpdateCoordinator(HomewhizCoordinator):
         )
         assert service_info is not None
         _LOGGER.info(f"Successfully connected. RSSI: {service_info.rssi}")
+
+        if not self._refresh_connection_task:
+            # Set hass task to reconnect every hour
+            # Returns a callable to remove the task
+            self._refresh_connection_task = async_track_time_interval(
+                hass=self.hass,
+                action=self.handle_disconnect,  # type: ignore[arg-type]
+                interval=timedelta(hours=1),
+            )
+            _LOGGER.debug("Set hass time interval connection refresh")
 
         return True
 
@@ -120,6 +134,11 @@ class HomewhizBluetoothUpdateCoordinator(HomewhizCoordinator):
         if self._connection is not None:
             await self._connection.disconnect()
         _LOGGER.debug(f"[{self.address}] Connection killed")
+
+        if self._refresh_connection_task:
+            # Remove update timer task
+            self._refresh_connection_task()
+            self._refresh_connection_task = None
 
 
 class MessageAccumulator:
